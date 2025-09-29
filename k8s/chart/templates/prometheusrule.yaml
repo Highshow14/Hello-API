@@ -1,0 +1,41 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: hello-api-rules
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: hello-api.rules
+      rules:
+        - alert: HelloApiTargetDown
+          expr: |
+            sum by (service) (up{namespace="{{ .Release.Namespace }}", service=~"hello-api-(stable|canary)"} == 0) > 0
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Hello API target down"
+            description: "One or more scrape targets are down for >2m."
+
+        - alert: HelloApiHighRestarts
+          expr: |
+            sum by (pod) (
+              increase(kube_pod_container_status_restarts_total{namespace="{{ .Release.Namespace }}", pod=~"hello-api-.*"}[5m])
+            ) > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Hello API high restarts"
+            description: "Pod restarts >3 in 5m (possible crashloop)."
+
+        - alert: HelloApiUnavailableReplicas
+          expr: kube_deployment_status_replicas_unavailable{namespace="{{ .Release.Namespace }}", deployment="hello-api"} > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Hello API unavailable"
+            description: "Deployment has unavailable replicas >5m."

@@ -1,0 +1,51 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: hello-api
+  labels: { app: hello-api }
+spec:
+  replicas: 2
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels: { app: hello-api }
+  strategy:
+    canary:
+      stableService: hello-api-stable
+      canaryService: hello-api-canary
+      trafficRouting:
+        nginx:
+          stableIngress: hello-api
+      steps:
+        - setWeight: 20
+        - pause: { duration: 60 }
+        - setWeight: 50
+        - pause: { duration: 120 }
+        - setWeight: 100
+  template:
+    metadata:
+      labels: { app: hello-api }
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: SECRET_PATH
+              value: /vault/secrets/api_key
+          volumeMounts:
+            - name: vault-secrets
+              mountPath: /vault/secrets
+              readOnly: true
+      volumes:
+        - name: vault-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: vault-api-key
+      # Uncomment if using private image:
+      # imagePullSecrets:
+      #   - name: ghcr-creds

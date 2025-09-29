@@ -1,0 +1,12 @@
+image:
+  repository: ghcr.io/your-org/your-repo   # <- change me (GHCR path)
+  tag: "latest"
+
+ingress:
+  enabled: true
+  className: nginx
+  host: hello.local
+
+# Uncomment if you use a private GHCR image:
+# imagePullSecrets:
+#   - name: ghcr-creds
